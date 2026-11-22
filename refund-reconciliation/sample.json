@@ -1,0 +1,1 @@
+{"orders":[{"orderId":"A1","cents":10000},{"orderId":"A2","cents":7000}],"refunds":[{"orderId":"A1","cents":2000}],"settlements":[{"orderId":"A1","cents":8000},{"orderId":"A2","cents":6500}]}

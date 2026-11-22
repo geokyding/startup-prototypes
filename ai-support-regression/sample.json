@@ -1,0 +1,1 @@
+{"cases":[{"id":"1","tenant":"store-a","question":"How long can I return it?","baseline":"Within 30 days","candidate":"Within 14 days","required":["30 days"],"forbidden":["14 days"]},{"id":"2","tenant":"store-b","question":"Where can I track it?","baseline":"Order details","candidate":"See Order details","required":["Order details"]}]}

@@ -1,0 +1,1 @@
+{"samples":[{"id":"1","group":"line-a/night","image":"001.jpg","actual":true,"predicted":false},{"id":"2","group":"line-a/night","image":"002.jpg","actual":true,"predicted":true},{"id":"3","group":"line-b/day","image":"003.jpg","actual":false,"predicted":true}]}
