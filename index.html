@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>创业原型工作台</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f6f5;color:#152923;font:16px system-ui,sans-serif}main{max-width:1080px;margin:auto;padding:48px 24px}h1{font-size:clamp(30px,5vw,48px);margin:0 0 24px}h2{margin-top:0}nav,.actions{display:flex;flex-wrap:wrap;gap:8px}button,label.upload{font:inherit;cursor:pointer;border:1px solid #afc3bb;border-radius:9px;padding:9px 14px;background:white;color:inherit}button[aria-pressed=true],button.primary{background:#155b48;color:white;border-color:#155b48}button:disabled{opacity:.5;cursor:wait}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}section{min-width:0;background:white;border:1px solid #d6e1dc;border-radius:14px;padding:20px}textarea,pre{width:100%;min-height:330px;margin:15px 0 0;padding:14px;border:1px solid #d6e1dc;border-radius:8px;background:#f6f8f7;font:14px ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere}textarea{resize:vertical}p{color:#40574e}#status{min-height:1.5em}input[hidden]{display:none}@media(max-width:720px){.grid{grid-template-columns:1fr}}
+</style>
+<main>
+<h1>创业原型工作台</h1>
+<nav aria-label="选择原型" id="tools"></nav>
+<p id="description"></p>
+<div class="grid">
+<section>
+<h2>输入数据</h2>
+<div class="actions"><button id="sample">载入样例</button><label class="upload">上传 JSON<input id="file" type="file" accept=".json,application/json"></label><button class="primary" id="run">运行分析</button></div>
+<textarea id="data" aria-label="JSON 输入" spellcheck="false"></textarea>
+</section>
+<section>
+<h2>分析结果</h2>
+<div class="actions"><button id="download" disabled>下载结果</button></div>
+<pre id="result">运行后在此查看结果。</pre>
+<p id="status" role="status"></p>
+</section>
+</div>
+</main>
+<script type="module">
+const definitions = {
+  'refund-reconciliation': ['电商退款对账', '匹配订单、退款与结算记录，定位金额差异和对应数据行。'],
+  'ai-support-regression': ['AI 客服回归体检', '比较新旧回答，找出未满足短语规则的用例和受影响的客户。'],
+  'vision-error-review': ['工业视觉复盘', '按产线或班次归纳漏检、误报与对应样本。']
+};
+const get = id => document.getElementById(id);
+let selected;
+let revision = 0;
+let report;
+function reset() {
+  revision++;
+  report = undefined;
+  get('download').disabled = true;
+  get('run').disabled = false;
+  get('result').textContent = '运行后在此查看结果。';
+  get('status').textContent = '';
+  return revision;
+}
+async function loadSample() {
+  const current = reset();
+  try {
+    const response = await fetch('/sample/' + selected);
+    if (!response.ok) throw new Error('载入失败');
+    const sample = await response.json();
+    if (current === revision) get('data').value = JSON.stringify(sample, null, 2);
+  } catch (error) {
+    if (current === revision) get('status').textContent = error.message;
+  }
+}
+for (const [id, [title, description]] of Object.entries(definitions)) {
+  const button = document.createElement('button');
+  button.textContent = title;
+  button.onclick = () => {
+    selected = id;
+    for (const tab of get('tools').children) tab.setAttribute('aria-pressed', tab === button);
+    get('description').textContent = description;
+    get('data').value = '';
+    loadSample();
+  };
+  get('tools').append(button);
+}
+get('sample').onclick = loadSample;
+get('data').oninput = reset;
+get('file').onchange = async event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const current = reset();
+  event.target.value = '';
+  try {
+    if (file.size > 2000000) throw new Error('文件超过 2 MB');
+    const value = await file.text();
+    if (current === revision) get('data').value = value;
+  } catch (error) {
+    if (current === revision) get('status').textContent = error.message;
+  }
+};
+get('run').onclick = async () => {
+  const current = reset();
+  get('run').disabled = true;
+  get('status').textContent = '正在分析…';
+  try {
+    const data = JSON.parse(get('data').value);
+    const response = await fetch('/run/' + selected, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error);
+    if (current !== revision) return;
+    report = JSON.stringify(result, null, 2);
+    get('result').textContent = report;
+    get('status').textContent = '分析完成';
+    get('download').disabled = false;
+  } catch (error) {
+    if (current === revision) get('status').textContent = '分析失败：' + error.message;
+  } finally {
+    if (current === revision) get('run').disabled = false;
+  }
+};
+get('download').onclick = () => {
+  const url = URL.createObjectURL(new Blob([report], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = selected + '-report.json';
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+get('tools').firstElementChild.click();
+</script>
+</html>
